@@ -1,0 +1,307 @@
+# MUFG Bank - NIST 800-53 Control Mapping
+# This file maps NIST controls to technical implementations (SCPs and Sentinel policies)
+# Last updated: 2025-11-30
+# Owner: Platform Security Team
+
+metadata:
+  organization: "Mitsubishi UFJ Financial Group"
+  scope: "AWS Cloud Infrastructure"
+  framework: "NIST 800-53 Rev 5"
+  total_required_controls: 50
+  last_review_date: "2025-11-30"
+  next_review_date: "2026-02-28"
+
+# Define all NIST control families we need to cover
+control_families:
+  - id: "AC"
+    name: "Access Control"
+    description: "Policies that limit access to information systems and resources"
+    
+  - id: "AU"
+    name: "Audit and Accountability"
+    description: "Policies for event logging, monitoring, and audit records"
+    
+  - id: "SC"
+    name: "System and Communications Protection"
+    description: "Policies for boundary protection, encryption, and network security"
+    
+  - id: "CM"
+    name: "Configuration Management"
+    description: "Policies for baseline configurations and change control"
+    
+  - id: "IA"
+    name: "Identification and Authentication"
+    description: "Policies for user/system authentication and identity management"
+
+# Individual control implementations
+controls:
+  # ==================== ACCESS CONTROL (AC) ====================
+  
+  - control_id: "AC-3"
+    control_family: "AC"
+    control_name: "Access Enforcement"
+    nist_description: "The information system enforces approved authorizations for logical access to information and system resources"
+    priority: "high"
+    status: "implemented"
+    implementation_date: "2025-10-15"
+    last_updated: "2025-11-20"
+    owner: "Chris Williams"
+    
+    # Technical requirements breakdown
+    technical_requirements:
+      - requirement_id: "AC-3.1"
+        description: "Prevent public access to S3 buckets"
+        rationale: "Public S3 buckets can expose sensitive financial data"
+        
+        # AWS SCP implementation
+        scp_policy:
+          enabled: true
+          policy_name: "deny-public-s3-buckets"
+          policy_file: "scps/AC/AC-3-deny-public-s3.json"
+          applied_to:
+            - "Production OU"
+            - "Staging OU"
+          enforcement_level: "hard-deny"
+          
+        # Terraform Sentinel implementation  
+        sentinel_policy:
+          enabled: true
+          policy_name: "s3-access-controls"
+          policy_file: "sentinel/AC/nist-ac3-s3-controls.sentinel"
+          applied_to:
+            - "All production workspaces"
+            - "All staging workspaces"
+          enforcement_level: "mandatory"
+          
+        # Evidence and testing
+        validation:
+          test_file: "sentinel/AC/tests/ac3-s3-pass.json"
+          last_test_date: "2025-11-28"
+          test_result: "pass"
+          
+      - requirement_id: "AC-3.2"
+        description: "Ensure database instances are not publicly accessible"
+        rationale: "Database endpoints must remain private to prevent unauthorized access"
+        
+        scp_policy:
+          enabled: false
+          reason: "Too granular for SCP - handled by Sentinel"
+          
+        sentinel_policy:
+          enabled: true
+          policy_name: "rds-private-endpoints"
+          policy_file: "sentinel/AC/nist-ac3-rds-private.sentinel"
+          applied_to:
+            - "All workspaces"
+          enforcement_level: "mandatory"
+          
+        validation:
+          test_file: "sentinel/AC/tests/ac3-rds-pass.json"
+          last_test_date: "2025-11-28"
+          test_result: "pass"
+          
+      - requirement_id: "AC-3.3"
+        description: "Require MFA for privileged AWS API operations"
+        rationale: "Multi-factor authentication prevents unauthorized privileged access"
+        
+        scp_policy:
+          enabled: true
+          policy_name: "require-mfa-privileged-ops"
+          policy_file: "scps/AC/AC-3-require-mfa.json"
+          applied_to:
+            - "All OUs except Sandbox"
+          enforcement_level: "hard-deny"
+          
+        sentinel_policy:
+          enabled: false
+          reason: "Enforced at AWS API level via SCP"
+
+  - control_id: "AC-6"
+    control_family: "AC"
+    control_name: "Least Privilege"
+    nist_description: "The organization employs the principle of least privilege"
+    priority: "high"
+    status: "implemented"
+    implementation_date: "2025-09-20"
+    last_updated: "2025-11-01"
+    owner: "Chris Williams"
+    
+    technical_requirements:
+      - requirement_id: "AC-6.1"
+        description: "Prevent overly permissive IAM policies"
+        rationale: "IAM policies must follow least privilege principle"
+        
+        scp_policy:
+          enabled: true
+          policy_name: "prevent-admin-wildcards"
+          policy_file: "scps/AC/AC-6-least-privilege.json"
+          applied_to:
+            - "All OUs"
+          enforcement_level: "hard-deny"
+          
+        sentinel_policy:
+          enabled: true
+          policy_name: "iam-least-privilege-validation"
+          policy_file: "sentinel/AC/nist-ac6-iam-validation.sentinel"
+          applied_to:
+            - "All workspaces"
+          enforcement_level: "advisory"
+          
+        validation:
+          test_file: "sentinel/AC/tests/ac6-iam-pass.json"
+          last_test_date: "2025-11-15"
+          test_result: "pass"
+
+  # ==================== SYSTEM & COMMUNICATIONS PROTECTION (SC) ====================
+  
+  - control_id: "SC-7"
+    control_family: "SC"
+    control_name: "Boundary Protection"
+    nist_description: "The information system monitors and controls communications at external and key internal boundaries"
+    priority: "high"
+    status: "implemented"
+    implementation_date: "2025-10-01"
+    last_updated: "2025-11-10"
+    owner: "Nic Jackson"
+    
+    technical_requirements:
+      - requirement_id: "SC-7.1"
+        description: "Require VPC endpoints for AWS services"
+        rationale: "Traffic to AWS services should not traverse public internet"
+        
+        scp_policy:
+          enabled: true
+          policy_name: "require-vpc-endpoints"
+          policy_file: "scps/SC/SC-7-require-vpc-endpoints.json"
+          applied_to:
+            - "Production OU"
+          enforcement_level: "hard-deny"
+          
+        sentinel_policy:
+          enabled: true
+          policy_name: "network-segmentation-validation"
+          policy_file: "sentinel/SC/nist-sc7-network-segmentation.sentinel"
+          applied_to:
+            - "All production workspaces"
+          enforcement_level: "mandatory"
+          
+        validation:
+          test_file: "sentinel/SC/tests/sc7-network-pass.json"
+          last_test_date: "2025-11-20"
+          test_result: "pass"
+
+  - control_id: "SC-13"
+    control_family: "SC"
+    control_name: "Cryptographic Protection"
+    nist_description: "The information system implements FIPS-validated cryptography"
+    priority: "critical"
+    status: "implemented"
+    implementation_date: "2025-09-15"
+    last_updated: "2025-11-25"
+    owner: "Nic Jackson"
+    
+    technical_requirements:
+      - requirement_id: "SC-13.1"
+        description: "Require encryption for S3 buckets"
+        rationale: "All data at rest must be encrypted with AES-256 or KMS"
+        
+        scp_policy:
+          enabled: true
+          policy_name: "require-s3-encryption"
+          policy_file: "scps/SC/SC-13-require-encryption.json"
+          applied_to:
+            - "Production OU"
+            - "Staging OU"
+          enforcement_level: "hard-deny"
+          
+        sentinel_policy:
+          enabled: true
+          policy_name: "encryption-validation"
+          policy_file: "sentinel/SC/nist-sc13-encryption.sentinel"
+          applied_to:
+            - "All workspaces"
+          enforcement_level: "mandatory"
+          
+        validation:
+          test_file: "sentinel/SC/tests/sc13-encryption-pass.json"
+          last_test_date: "2025-11-28"
+          test_result: "pass"
+          
+      - requirement_id: "SC-13.2"
+        description: "Require encryption for RDS databases"
+        rationale: "Database encryption at rest is mandatory for financial data"
+        
+        scp_policy:
+          enabled: false
+          reason: "Cannot enforce via SCP - RDS encryption is a resource property"
+          
+        sentinel_policy:
+          enabled: true
+          policy_name: "rds-encryption-required"
+          policy_file: "sentinel/SC/nist-sc13-encryption.sentinel"
+          applied_to:
+            - "All workspaces"
+          enforcement_level: "mandatory"
+          
+        validation:
+          test_file: "sentinel/SC/tests/sc13-rds-pass.json"
+          last_test_date: "2025-11-28"
+          test_result: "pass"
+
+  # ==================== AUDIT & ACCOUNTABILITY (AU) ====================
+  
+  - control_id: "AU-2"
+    control_family: "AU"
+    control_name: "Audit Events"
+    nist_description: "The information system generates audit records for defined events"
+    priority: "medium"
+    status: "in_progress"
+    planned_implementation_date: "2026-01-31"
+    owner: "Platform Team"
+    
+    technical_requirements:
+      - requirement_id: "AU-2.1"
+        description: "CloudTrail must be enabled in all accounts"
+        rationale: "Audit trail required for compliance and incident response"
+        
+        scp_policy:
+          enabled: false
+          planned: true
+          policy_file: "scps/AU/AU-2-require-cloudtrail.json"
+          
+        sentinel_policy:
+          enabled: false
+          planned: true
+          policy_file: "sentinel/AU/nist-au2-cloudtrail.sentinel"
+          
+        notes: "Policy development in progress - Q1 2026 delivery"
+
+  - control_id: "AU-6"
+    control_family: "AU"
+    control_name: "Audit Review, Analysis, and Reporting"
+    nist_description: "The organization reviews and analyzes audit records"
+    priority: "low"
+    status: "not_implemented"
+    
+    technical_requirements:
+      - requirement_id: "AU-6.1"
+        description: "Automated log analysis and alerting"
+        rationale: "Automated review of CloudTrail and VPC Flow Logs"
+        
+        scp_policy:
+          enabled: false
+          reason: "Not applicable - this is a process control, not infrastructure"
+          
+        sentinel_policy:
+          enabled: false
+          reason: "Not applicable - this is a process control, not infrastructure"
+          
+        notes: "Implemented via AWS Security Hub - no policy-as-code needed"
+
+# Coverage summary (auto-calculated by script)
+coverage_summary:
+  total_controls: 6
+  implemented: 4
+  in_progress: 1
+  not_implemented: 1
+  coverage_percentage: 66.7
