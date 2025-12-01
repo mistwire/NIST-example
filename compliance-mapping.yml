@@ -1,10 +1,10 @@
-# MUFG Bank - NIST 800-53 Control Mapping
+# NIST 800-53 Control Mapping
 # This file maps NIST controls to technical implementations (SCPs and Sentinel policies)
 # Last updated: 2025-11-30
 # Owner: Platform Security Team
 
 metadata:
-  organization: "Mitsubishi UFJ Financial Group"
+  organization: "MUFG"
   scope: "AWS Cloud Infrastructure"
   framework: "NIST 800-53 Rev 5"
   total_required_controls: 50
